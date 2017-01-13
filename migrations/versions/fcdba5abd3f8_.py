@@ -1,13 +1,13 @@
 """empty message
 
-Revision ID: 58b580be0e27
+Revision ID: fcdba5abd3f8
 Revises: None
-Create Date: 2016-11-08 14:31:59.638226
+Create Date: 2017-01-13 15:22:19.648569
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '58b580be0e27'
+revision = 'fcdba5abd3f8'
 down_revision = None
 
 from alembic import op
@@ -27,6 +27,7 @@ def upgrade():
     sa.Column('primary_url_jinja2_template', sa.String(length=128), nullable=False),
     sa.Column('secondary_url_jinja2_template', sa.String(length=128), nullable=False),
     sa.Column('stream_name_jinja2_template', sa.String(length=128), nullable=False),
+    sa.Column('output_stream_jinja2_template', sa.String(length=128), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('stream_id')
     )
