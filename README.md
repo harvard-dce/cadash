@@ -21,12 +21,19 @@ then setup the environment variables:
     ... set your env vars...
     source example.env
 
+create a local empty db file:
+
+    python manage.py db upgrade
+
 to start a dev server:
 
-    cd cadash
     python manage.py server
 
-you will see a (somewhat) pretty welcome screen.
+you will see a (somewhat) pretty welcome screen in
+
+- http://localhost:5000
+
+
 
 deployment
 ----------
