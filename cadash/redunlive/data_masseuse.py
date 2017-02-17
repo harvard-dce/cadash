@@ -2,6 +2,7 @@
 
 from epipearl import Epipearl
 import logging
+import re
 
 from flask import current_app
 
@@ -22,6 +23,20 @@ def map_redunlive_ca_loc(data):
 
     for ca_item in data:
         loc_id = CaLocation.clean_name(ca_item['location'])
+
+        fw_version=3    # default
+        if 'ca_attributes' in ca_item and \
+                'firmware_info' in ca_item['ca_attributes']:
+            for st in ca_item['ca_attributes']['firmware_info']:
+                m = re.search('(?<=FIRMWARE_VERSION=\")\d+', st)
+                if m:
+                    fw_version = m.group(0)
+                    break
+        else:
+            log.warning( \
+                    "missing 'firmware_info' for CA(%s)" \
+                    % ca_item['location'] )
+            continue
 
         # create location object if not in internal map of locations
         if loc_id not in all_locations:
@@ -47,7 +62,7 @@ def map_redunlive_ca_loc(data):
                     % (ca_item['address'], ca_item['location']))
             continue
 
-        ca = CaptureAgent(serial_number, ca_item['address'])
+        ca = CaptureAgent(serial_number, ca_item['address'], firmware_version=fw_version)
 
         if ca_item['role'] == 'Primary':
             loc.primary_ca = ca
@@ -63,13 +78,14 @@ def map_redunlive_ca_loc(data):
             for chan, info in ca_item['ca_attributes']['channels'].iteritems():
                 if 'live' in info['name'].lower():
                     if 'lowbr' not in info['name'].lower():
-                        ca.channels['live']['channel'] = chan if chan else 'not available'
-                        if 'publish_type' in info:
-                            ca.channels['live']['publish_type'] = info['publish_type']
+                        key = 'live'
                     else:
-                        ca.channels['lowBR']['channel'] = chan if chan else 'not available'
+                        key = 'lowBR'
+                        ca.channels[key]['channel'] = chan if chan else 'not available'
                         if 'publish_type' in info:
-                            ca.channels['lowBR']['publish_type'] = info['publish_type']
+                            ca.channels[key]['publish_type'] = info['publish_type']
+                        if 'publish_enabled' in info:
+                            ca.channels[key]['publish_enabled'] = info['publish_enabled']
 
         # add ca to internal list of ca's
         all_cas[ca.serial_number] = ca

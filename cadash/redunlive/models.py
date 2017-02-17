@@ -14,9 +14,14 @@ class CaptureAgent(object):
     is 'not available'
     """
 
-    def __init__(self, serial_number, address):
+    def __init__(self, serial_number, address, firmware_version=3):
         self._serial_number = serial_number
         self._address = address
+        self.firmware_version = firmware_version
+        if firmware_version == "3":
+            self.param = "publish_type"      # 6 (rtmp) or otherwise
+        else: # In version 4, publish_type is always set, publish_enabled turns it on
+            self.param = "publish_enabled"   # "on" or otherwise
 
         (name, trash) = self.address.split('.', 1)
         self._name = self.clean_name(name)
@@ -25,13 +30,15 @@ class CaptureAgent(object):
         self._last_update = arrow.get(2000, 1, 1)
 
         # for now, the livestream channel# must be set externally
+        # In 4.x livestream on = publish_type == 6 and enabled == "on"
+        # In 3.x livestream on = publish_type == 6 
         self.channels = {
                 'live': {
                     'channel': 'not available',
-                    'publish_type': 'not available'},
+                    self.param: 'not available'},
                 'lowBR': {
                     'channel': 'not available',
-                    'publish_type': 'not available'},
+                    self.param: 'not available'},
             }
 
 
@@ -60,7 +67,7 @@ class CaptureAgent(object):
         return self._name
 
 
-    def __get_channel_publish_type(self, chan_name):
+    def __get_channel_publish_status(self, chan_name):
         chan = self.channels[chan_name]
 
         logger = logging.getLogger(__name__)
@@ -73,25 +80,24 @@ class CaptureAgent(object):
 
         try:
             response = self.client.get_params(
-                    channel=chan['channel'], params={'publish_type': ''})
+                    channel=chan['channel'], params={self.param: ''})
             self._last_update = arrow.utcnow()
 
             logger.debug(
-                    'device(%s) channel(%s)=(%s) publish_type=(%s)' %
-                    (self.name, chan_name, chan['channel'], response))
+                    'device(%s) channel(%s)=(%s) %s=(%s)' %
+                    (self.name, chan_name, chan['channel'], self.param, response))
 
         except Exception as e:
             logger.warning(
-                    'CA(%s) unable to get channel(%s) publish_type. error: %s' %
-                    (self.name, chan_name, e.message))
+                    'CA(%s) unable to get channel(%s) %s. error: %s' %
+                    (self.name, chan_name, self.param, e.message))
 
             return 'not available'
         else:
-            return response['publish_type'] \
-                    if 'publish_type' in response else 'not available'
+            return response[self.param] \
+                    if self.param in response else 'not available'
 
-
-    def __set_channel_publish_type(self, chan_name, value):
+    def __set_channel_publish_status(self, chan_name, value):
         chan = self.channels[chan_name]
         if chan['channel'] == 'not available' or self.client is None:
             return 'not available'
@@ -100,18 +106,18 @@ class CaptureAgent(object):
         try:
             self.client.set_params(
                     channel=self.channels[chan_name]['channel'],
-                    params={'publish_type': value})
+                    params={self.param: value})
             self._last_update = arrow.utcnow()
         except Exception as e:
             logger.warning(
-                    'CA(%s) unable to set channel(%s) publish_type to %s. error: %s'
-                    % (self.name, chan_name, value, e.message))
+                    'CA(%s) unable to set channel(%s) %s to %s. error: %s'
+                    % (self.name, chan_name, value, self.param, e.message))
             return 'not available'
 
         else:
             logger.warning(
-                    'CA(%s) channel(%s) publish_type set to %s'
-                    % (self.name, chan_name, value))
+                    'CA(%s) channel(%s) %s set to %s'
+                    % (self.name, chan_name, self.param, value))
             return value
 
 
@@ -126,42 +132,48 @@ class CaptureAgent(object):
         """
         logger = logging.getLogger(__name__)
         logger.debug('in sync_live_status for device(%s)' % self.name)
-        live = self.__get_channel_publish_type('live')
-        lowBR = self.__get_channel_publish_type('lowBR')
+        live = self.__get_channel_publish_status('live')
+        lowBR = self.__get_channel_publish_status('lowBR')
 
         if live == lowBR:
-            self.channels['live']['publish_type'] = live
-            self.channels['lowBR']['publish_type'] = lowBR
+            self.channels['live'][self.param] = live
+            self.channels['lowBR'][self.param] = lowBR
         else:
             logger.warning(
-                    'CA(%s) publish_type for live/lowBR (%s/%s); trying to fix...'
-                    % (self.name, live, lowBR))
-            value = self.__set_channel_publish_type('lowBR', live)
+                    'CA(%s) %s for live/lowBR (%s/%s); trying to fix...'
+                    % (self.name, self.param, live, lowBR))
+            value = self.__set_channel_publish_status('lowBR', live)
 
             if value == live:
                 logger.warning(
-                        'CA(%s) publish_type for live/lowBR fixed (%s)'
-                        % (self.name, value))
+                        'CA(%s) %s for live/lowBR fixed (%s)'
+                        % (self.name, self.param, value))
             else:
                 logger.warning(
-                        'CA(%s) unable to fix publish_type for lowBR to (%s)'
-                        % (self.name, live))
+                        'CA(%s) unable to fix %s for lowBR to (%s)'
+                        % (self.name, self.param, live))
 
             # finally set channels to whatever was possible to set
-            self.channels['live']['publish_type'] = live
-            self.channels['lowBR']['publish_type'] = value
+            self.channels['live'][self.param] = live
+            self.channels['lowBR'][self.param] = value
 
 
-    def write_live_status(self, publish_type):
+    def write_live_status(self, publish_stat):
         """set capture agent live status for both 'live' and 'lowBR' channels."""
-        self.channels['live']['publish_type'] = \
-            self.__set_channel_publish_type('live', publish_type)
-        self.channels['lowBR']['publish_type'] = \
-            self.__set_channel_publish_type('lowBR', publish_type)
+        for ch in ['live','lowBR']:
+            self.channels[ch][self.param] = \
+                self.__set_channel_publish_status(ch, publish_stat)
+        return publish_stat
+
+    def write_live_status_enabled(self, publish_stat):
+        """set capture agent live status for both 'live' and 'lowBR' channels."""
+        for ch in ['live','lowBR']:
+            self.channels[ch][self.param] = \
+                self.__set_channel_publish_enabled(ch, publish_stat)
+        return publish_stat
 
         # not ideal, but check that live and lowBR have the correct publish_type
         # is left to the user...
-        return publish_type
 
 
     def __repr__(self):
@@ -185,16 +197,25 @@ class CaptureAgent(object):
                self.channels['live']['publish_type'],
                self.channels['lowBR']['channel'],
                self.channels['lowBR']['publish_type'],
+               self.channels['live']['publish_enabled'],
+               self.channels['lowBR']['publish_enabled'],
                self._last_update.to('local').format('YYYY-MM-DD HH:mm:ss ZZ'))
 
 
 
 class CaLocation(object):
 
-    def __init__(self, name):
+    def __init__(self, name, firmware_version="3"):
         self._id = self.clean_name(name)
         self._primary_ca = None
         self._secondary_ca = None
+        self.firmware = firmware_version
+        if firmware_version=="3":
+            self.param = "publish_type"
+            self.active = '6'
+        else:
+            self.param = "publish_enabled"
+            self.active = 'on'
 
         self.name = name
         self.experimental_cas = []
@@ -241,11 +262,11 @@ class CaLocation(object):
     @property
     def active_livestream(self):
         if self._primary_ca is not None:
-            if self._primary_ca.channels['live']['publish_type'] == '6':
+            if self._primary_ca.channels['live'][self.param] == self.active:
                 return 'primary'
 
         if self._secondary_ca is not None:
-            if self._secondary_ca.channels['live']['publish_type'] == '6':
+            if self._secondary_ca.channels['live'][self.param] == self.active:
                 return 'secondary'
 
         # there's no active livestream
