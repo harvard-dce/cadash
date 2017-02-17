@@ -22,7 +22,7 @@
                 "2": {
                     "activeInputs": "0",
                     "enabled": "on",
-                    "name": "dce_Live_LowBR",
+                    "name": "dce_live_lowBR",
                     "publish_type": "6",
                     "state": "",
                     "totalInputs": "0",
@@ -31,7 +31,7 @@
                 "3": {
                     "activeInputs": "0",
                     "enabled": "off",
-                    "name": "dce_Live",
+                    "name": "dce_live",
                     "publish_type": "6",
                     "state": "",
                     "totalInputs": "0",

@@ -81,11 +81,11 @@ def map_redunlive_ca_loc(data):
                         key = 'live'
                     else:
                         key = 'lowBR'
-                        ca.channels[key]['channel'] = chan if chan else 'not available'
-                        if 'publish_type' in info:
-                            ca.channels[key]['publish_type'] = info['publish_type']
-                        if 'publish_enabled' in info:
-                            ca.channels[key]['publish_enabled'] = info['publish_enabled']
+                    ca.channels[key]['channel'] = chan if chan else 'not available'
+                    if 'publish_type' in info:
+                        ca.channels[key]['publish_type'] = info['publish_type']
+                    if 'publish_enabled' in info:
+                        ca.channels[key]['publish_enabled'] = info['publish_enabled']
 
         # add ca to internal list of ca's
         all_cas[ca.serial_number] = ca

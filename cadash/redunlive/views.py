@@ -64,19 +64,19 @@ def home():
             # toggling from backup to primary requires a start over
             if request.form['active_device'] == 'primary':
                 # start primary streaming
-                location.primary_ca.write_live_status('6')
+                location.primary_ca.write_live_status(location.active)
                 time.sleep(2)
                 # stop backup streaming so akamai detect that for sure
-                location.secondary_ca.write_live_status('0')
+                location.secondary_ca.write_live_status(location.inactive)
                 time.sleep(1)
                 # start backup streaming again
-                location.secondary_ca.write_live_status('6')
+                location.secondary_ca.write_live_status(location.active)
             else:
                 # make sure secondary is streaming
-                location.secondary_ca.write_live_status('6')
+                location.secondary_ca.write_live_status(location.active)
                 time.sleep(2)
                 # stop streaming primary
-                location.primary_ca.write_live_status('0')
+                location.primary_ca.write_live_status(location.inactive)
                 time.sleep(1)
 
             # make sure we have the device status

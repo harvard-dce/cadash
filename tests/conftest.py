@@ -91,6 +91,7 @@ def simple_db(db):
     db.session.commit() # need the vendor.id to create ca
 
     # create a bunch of capture agents
+    # TODO: Add firmware version
     mini_db['ca'] = []
     for i in range(5):
         mini_db['ca'].append(CaFactory(vendor_id=mini_db['vendor'].id))

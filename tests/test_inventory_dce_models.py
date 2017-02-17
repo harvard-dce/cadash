@@ -87,6 +87,8 @@ class TestDceCaConfigModel(object):
             base_config = json.load(f)
 
         assert isinstance(full_config, dict)
+        print full_config['channels']['dce_live']
+        print base_config['channels']['dce_live']
         assert full_config['channels']['dce_live'] == base_config['channels']['dce_live']
         assert full_config == base_config
 

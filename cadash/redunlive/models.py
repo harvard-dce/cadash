@@ -14,7 +14,7 @@ class CaptureAgent(object):
     is 'not available'
     """
 
-    def __init__(self, serial_number, address, firmware_version=3):
+    def __init__(self, serial_number, address, firmware_version="3"):
         self._serial_number = serial_number
         self._address = address
         self.firmware_version = firmware_version
@@ -165,13 +165,6 @@ class CaptureAgent(object):
                 self.__set_channel_publish_status(ch, publish_stat)
         return publish_stat
 
-    def write_live_status_enabled(self, publish_stat):
-        """set capture agent live status for both 'live' and 'lowBR' channels."""
-        for ch in ['live','lowBR']:
-            self.channels[ch][self.param] = \
-                self.__set_channel_publish_enabled(ch, publish_stat)
-        return publish_stat
-
         # not ideal, but check that live and lowBR have the correct publish_type
         # is left to the user...
 
@@ -194,11 +187,9 @@ class CaptureAgent(object):
                self._serial_number,
                self._address,
                self.channels['live']['channel'],
-               self.channels['live']['publish_type'],
+               self.channels['live'][self.param],
                self.channels['lowBR']['channel'],
-               self.channels['lowBR']['publish_type'],
-               self.channels['live']['publish_enabled'],
-               self.channels['lowBR']['publish_enabled'],
+               self.channels['lowBR'][self.param],
                self._last_update.to('local').format('YYYY-MM-DD HH:mm:ss ZZ'))
 
 
@@ -213,9 +204,11 @@ class CaLocation(object):
         if firmware_version=="3":
             self.param = "publish_type"
             self.active = '6'
+            self.inactive = '0'
         else:
             self.param = "publish_enabled"
             self.active = 'on'
+            self.inactive = 'off'
 
         self.name = name
         self.experimental_cas = []
